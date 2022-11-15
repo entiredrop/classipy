@@ -2,6 +2,13 @@ from utils import *
 import pandas as pd
 from math import floor
 
+alphabet = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+alphabet_translation_layer = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+ALPHABET_SIZE = 26
+ALPHABET_REPETITIONS = 3
+alphabet_current_index = 0
+alphabet_current_repetition = 0
+
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 
 pygame.display.set_caption("Drawing Program")
@@ -40,7 +47,7 @@ buttons = [
     Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, RED),
     Button(130, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, GREEN),
     Button(190, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLUE),
-    Button(250, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Erase", BLACK),
+    Button(250, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Export", BLACK),
     Button(310, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
     Button(370, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Import", BLACK),
     Button(430, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Denoise", BLACK),
@@ -69,29 +76,41 @@ def get_row_col_from_pos(pos):
     return row, col
 
 # Exports whatever is in the grid to excel file
-def export_data(grid, old_df):
-    vetor = []
+def export_data(grid, old_df, alphabet_current_index, alphabet_current_repetition, alphabet):
+    array_to_export = []
+
+    if alphabet_current_index >= ALPHABET_SIZE:
+        return old_df
+
+    array_to_export.append(alphabet[alphabet_current_index])
+
     for i, row in enumerate(grid):
         for j, pixel in enumerate(row):
             if grid[i][j] != WHITE:
-                vetor.append(1)
+                array_to_export.append(1)
             else:
-                vetor.append(0)
+                array_to_export.append(0)
 
-    df = pd.DataFrame(vetor).T
+    df = pd.DataFrame(array_to_export).T
 
     old_df = pd.concat([old_df, df])
 
+    alphabet_current_repetition += 1
+
+    if alphabet_current_repetition >= ALPHABET_REPETITIONS:
+        alphabet_current_index += 1
+        alphabet_current_repetition = 0
+
     try:
-        old_df.to_excel(r'C:\Users\Caio\Downloads\_test.xlsx', index=False)
+        old_df.to_excel(r'C:\Caio\VSCode\Dataset\data_set_2.xlsx', index=False)
     except PermissionError:
         print('Deu Ruim')
 
-    return old_df
+    return old_df, alphabet_current_repetition, alphabet_current_index
 
 # imports and turns excel file into grid
 def import_data():
-    loaded = pd.read_excel(r'C:\Users\Caio\Downloads\_test.xlsx')
+    loaded = pd.read_excel(r'C:\Caio\VSCode\Dataset\data_set_2.xlsx')
     grid_loaded = []
     for i in range(0,ROWS):
         grid_loaded.append([])
@@ -252,7 +271,7 @@ def align_top_left(grid, image_data: ImageData):
     else:
         return grid, image_data
 
-def expandMagic(grid, image_data: ImageData):
+def expandMagicRows(grid, image_data: ImageData):
 
     image_data.printMaxMin()
 
@@ -388,11 +407,21 @@ while run:
                         continue
 
                     if button.text == "Clear":
+                        if alphabet_current_index < ALPHABET_SIZE:
+                            print('Write the letter ' + alphabet_translation_layer[alphabet_current_index])
+
                         grid = init_grid(ROWS, COLS, BG_COLOR)
                         expand_ran = False
                         image_data = ImageData()
-                    elif button.text == "Erase":
-                        data_frame = export_data(grid, data_frame)
+
+                    elif button.text == "Export":
+                        if not expand_ran:
+                            expand_ran = True
+                            grid = clear_grid(grid)
+                            grid, image_data = align_top_left(grid, image_data)
+                            grid, image_data = expandMagicRows(grid, image_data)
+                            grid, image_data = expandMagicCols(grid, image_data)
+                            data_frame, alphabet_current_repetition, alphabet_current_index = export_data(grid, data_frame, alphabet_current_index, alphabet_current_repetition, alphabet)
                         print(image_data.getMaxX(), image_data.getMaxY(), image_data.getMinX(), image_data.getMinY())
                     elif button.text == "Import":
                         grid = init_grid(ROWS, COLS, BG_COLOR)
@@ -400,7 +429,7 @@ while run:
                     elif button.text == "Expand":
                         if not expand_ran:
                             expand_ran = True
-                            grid, image_data = expandMagic(grid, image_data)
+                            grid, image_data = expandMagicRows(grid, image_data)
                             grid, image_data = expandMagicCols(grid, image_data)
                     elif button.text == "Denoise":
                         try:
