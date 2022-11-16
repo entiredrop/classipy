@@ -2,23 +2,28 @@ from utils import *
 import pandas as pd
 from math import floor
 from sklearn.neural_network import MLPClassifier
+import pickle
 
 alphabet_obj = Alphabet()
 
-mlp_clf = MLPClassifier(hidden_layer_sizes=(600,400,200),
+mlp_clf = MLPClassifier()
+
+def train_mlp():
+    mlp_clf = MLPClassifier(hidden_layer_sizes=(600,400,200),
                         max_iter = 50000,activation = 'relu',
                         solver = 'adam')
 
+    loaded = pd.read_excel(r'data\\train_dataset.xlsx')
 
-loaded = pd.read_excel(r'data\\train_dataset.xlsx')
+    X_data = loaded
+    X_data = X_data.drop(columns='Name')
+    loaded.drop(loaded.iloc[:, 1:len(loaded.columns)], inplace=True, axis=1)
 
-X_data = loaded
-X_data = X_data.drop(columns='Name')
-loaded.drop(loaded.iloc[:, 1:len(loaded.columns)], inplace=True, axis=1)
+    print(loaded)
 
-print(loaded)
+    mlp_clf.fit(X_data, loaded)
 
-mlp_clf.fit(X_data, loaded)
+    return mlp_clf
 
 alphabet_current_index = 0
 alphabet_current_repetition = 0
@@ -62,7 +67,7 @@ prediction_button = \
 buttons = [
     Button(10, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLACK),
     Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, RED),
-    Button(130, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, GREEN),
+    Button(130, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Load ML", BLACK),
     Button(190, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Predict", BLACK),
     Button(250, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Export", BLACK),
     Button(310, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
@@ -92,7 +97,7 @@ def get_row_col_from_pos(pos):
     
     return row, col
 
-def create_array_to_predict(grid, button: Button):
+def create_array_to_predict(grid, button: Button, mlp_clf: MLPClassifier):
     array_to_export = []
 
     for i, row in enumerate(grid):
@@ -277,13 +282,7 @@ def expandMagicRows(image_data: ImageData):
     expand_array = []
 
     grid = image_data.getGrid()
-
-    #for i in range(1, image_data.getMaxY(), 1/factor):
-    #    if round(i*factor) < 49:
-    #        expand_array.append(round(i*factor))
-    #    else:
-    #        break
-
+    
     do_loop = True
     step = 1/factor
     iteration = 0;
@@ -334,12 +333,6 @@ def expandMagicCols(image_data: ImageData):
 
     grid = image_data.getGrid()
 
-    #for i in range(1, image_data.getMaxY(), 1/factor):
-    #    if round(i*factor) < 49:
-    #        expand_array.append(round(i*factor))
-    #    else:
-    #        break
-
     do_loop = True
     step = 1/factor
     iteration = 0;
@@ -374,6 +367,15 @@ def expandMagicCols(image_data: ImageData):
     image_data.setMinX(0)
 
     print('Fator: ' + str(factor))
+
+    return image_data
+
+# Perform pre-processing
+def condition_grid_to_process(image_data: ImageData):
+
+    image_data = align_top_left(image_data)
+    image_data = expandMagicRows(image_data)
+    image_data = expandMagicCols(image_data)
 
     return image_data
 
@@ -440,9 +442,7 @@ while run:
                         if not expand_ran:
                             expand_ran = True
                             image_data.setGrid(clear_grid(image_data.getGrid()))
-                            image_data = align_top_left(image_data)
-                            image_data = expandMagicRows(image_data)
-                            image_data = expandMagicCols(image_data)
+                            image_data = condition_grid_to_process(image_data)
                             data_frame, alphabet_current_repetition, alphabet_current_index = export_data(image_data.getGrid(), data_frame, alphabet_current_index, alphabet_current_repetition)
                         print(image_data.getMaxX(), image_data.getMaxY(), image_data.getMinX(), image_data.getMinY())
                     elif button.text == "Import":
@@ -451,19 +451,24 @@ while run:
                     elif button.text == "Expand":
                         if not expand_ran:
                             expand_ran = True
-                            image_data = expandMagicRows(image_data)
-                            image_data = expandMagicCols(image_data)
+                            mlp_clf = train_mlp()
                     elif button.text == "Predict":
                         if not predicted:
                             predicted = True
-                            image_data = align_top_left(image_data)
-                            image_data = expandMagicRows(image_data)
-                            image_data = expandMagicCols(image_data)
-                            create_array_to_predict(image_data.getGrid(), prediction_button)
+                            image_data = condition_grid_to_process(image_data)
+                            create_array_to_predict(image_data.getGrid(), prediction_button, mlp_clf)
+
+                    elif button.text == "Load ML":
+                        filename = 'data\\ml_model.sav'
+                        mlp_clf = pickle.load(open(filename, 'rb'))
                     elif button.text == "Denoise":
                         try:
-                            image_data.setGrid(clear_grid(image_data.getGrid()))
-                            image_data = align_top_left(image_data)
+                            #image_data.setGrid(clear_grid(image_data.getGrid()))
+                            #image_data = align_top_left(image_data)
+                            mlp_clf = train_mlp()
+                            filename = 'data\\ml_model.sav'
+                            pickle.dump(mlp_clf, open(filename, 'wb'))
+                            print('Network trained!')
                         except IndexError:
                             pass
                     else:
