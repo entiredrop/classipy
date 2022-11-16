@@ -1,6 +1,25 @@
 from utils import *
 import pandas as pd
 from math import floor
+from sklearn.neural_network import MLPClassifier
+from sklearn.neural_network import MLPRegressor
+from sklearn.neighbors import KNeighborsClassifier
+
+rad_clf = KNeighborsClassifier()
+mlp_clf = MLPClassifier(hidden_layer_sizes=(600,400,200),
+                        max_iter = 50000,activation = 'relu',
+                        solver = 'adam')
+
+
+loaded = pd.read_excel(r'C:\Caio\VSCode\Dataset\data_set_3_train_without_i.xlsx')
+
+X_data = loaded
+X_data = X_data.drop(columns='Name')
+y_data = loaded
+y_data = y_data.drop(y_data.iloc[:, 1:len(y_data.columns)], inplace=True, axis=1)
+
+mlp_clf.fit(X_data, loaded)
+rad_clf.fit(X_data, loaded)
 
 alphabet = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 alphabet_translation_layer = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
@@ -46,7 +65,7 @@ buttons = [
     Button(10, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLACK),
     Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, RED),
     Button(130, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, GREEN),
-    Button(190, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLUE),
+    Button(190, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Predict", BLACK),
     Button(250, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Export", BLACK),
     Button(310, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
     Button(370, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Import", BLACK),
@@ -75,6 +94,28 @@ def get_row_col_from_pos(pos):
     
     return row, col
 
+def create_array_to_predict(grid):
+    array_to_export = []
+
+    for i, row in enumerate(grid):
+        for j, pixel in enumerate(row):
+            if grid[i][j] != WHITE:
+                array_to_export.append(1)
+            else:
+                array_to_export.append(0)
+
+    df = pd.DataFrame(array_to_export).T
+
+    pred = mlp_clf.predict(df)
+
+    pred_2 = rad_clf.predict(df)
+
+    for i in pred:
+        print('Neural: '+ alphabet_translation_layer[i])
+
+    for i in pred_2:
+        print('Other: ' + alphabet_translation_layer[i])
+
 # Exports whatever is in the grid to excel file
 def export_data(grid, old_df, alphabet_current_index, alphabet_current_repetition, alphabet):
     array_to_export = []
@@ -102,7 +143,7 @@ def export_data(grid, old_df, alphabet_current_index, alphabet_current_repetitio
         alphabet_current_repetition = 0
 
     try:
-        old_df.to_excel(r'C:\Caio\VSCode\Dataset\data_set_2.xlsx', index=False)
+        old_df.to_excel(r'C:\Caio\VSCode\Dataset\data_set_3.xlsx', index=False)
     except PermissionError:
         print('Deu Ruim')
 
@@ -110,7 +151,7 @@ def export_data(grid, old_df, alphabet_current_index, alphabet_current_repetitio
 
 # imports and turns excel file into grid
 def import_data():
-    loaded = pd.read_excel(r'C:\Caio\VSCode\Dataset\data_set_2.xlsx')
+    loaded = pd.read_excel(r'C:\Caio\VSCode\Dataset\data_set_3.xlsx')
     grid_loaded = []
     for i in range(0,ROWS):
         grid_loaded.append([])
@@ -277,6 +318,9 @@ def expandMagicRows(grid, image_data: ImageData):
 
     factor = ROWS / (image_data.getMaxY() - image_data.getMinY() + 1)
 
+    if factor == 1:
+        return grid, image_data
+
     expand_array = []
 
     #for i in range(1, image_data.getMaxY(), 1/factor):
@@ -313,6 +357,9 @@ def expandMagicRows(grid, image_data: ImageData):
                 continue
             duplicate_top[i].append(grid[expand_array[i]][j])
 
+    image_data.setMaxY(49)
+    image_data.setMinY(0)
+
     print('Fator: ' + str(factor))
 
     return duplicate_top, image_data
@@ -325,6 +372,9 @@ def expandMagicCols(grid, image_data: ImageData):
 
     expand_array = []
 
+    if factor == 1:
+        return grid, image_data
+        
     #for i in range(1, image_data.getMaxY(), 1/factor):
     #    if round(i*factor) < 49:
     #        expand_array.append(round(i*factor))
@@ -359,6 +409,9 @@ def expandMagicCols(grid, image_data: ImageData):
                 continue
             duplicate_top[i].append(grid[i][expand_array[j]])
 
+    image_data.setMaxX(49)
+    image_data.setMinX(0)
+
     print('Fator: ' + str(factor))
 
     return duplicate_top, image_data
@@ -366,11 +419,12 @@ def expandMagicCols(grid, image_data: ImageData):
 image_data = ImageData()
 
 expand_ran = False
-
+button_clicked = False
+predicted = False
 while run:
     
     # From pygame, limit the FPS
-    clock.tick(FPS)
+    clock.tick(120)
 
     # Get events
     for event in pygame.event.get():
@@ -402,9 +456,14 @@ while run:
 
                     # If button was not clicked
                     if not button.clicked(pos):
-
+                        button_clicked = False
                         # Continue loop
                         continue
+                    
+                    if button_clicked:
+                        continue
+
+                    button_clicked = True
 
                     if button.text == "Clear":
                         if alphabet_current_index < ALPHABET_SIZE:
@@ -413,6 +472,7 @@ while run:
                         grid = init_grid(ROWS, COLS, BG_COLOR)
                         expand_ran = False
                         image_data = ImageData()
+                        predicted = False
 
                     elif button.text == "Export":
                         if not expand_ran:
@@ -431,6 +491,13 @@ while run:
                             expand_ran = True
                             grid, image_data = expandMagicRows(grid, image_data)
                             grid, image_data = expandMagicCols(grid, image_data)
+                    elif button.text == "Predict":
+                        if not predicted:
+                            predicted = True
+                            grid, image_data = align_top_left(grid, image_data)
+                            grid, image_data = expandMagicRows(grid, image_data)
+                            grid, image_data = expandMagicCols(grid, image_data)
+                            create_array_to_predict(grid)
                     elif button.text == "Denoise":
                         try:
                             grid = clear_grid(grid)
