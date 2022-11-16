@@ -11,7 +11,7 @@ mlp_clf = MLPClassifier(hidden_layer_sizes=(600,400,200),
                         solver = 'adam')
 
 
-loaded = pd.read_excel(r'C:\Caio\VSCode\Dataset\data_set_3_train_without_i.xlsx')
+loaded = pd.read_excel(r'data\\train_dataset.xlsx')
 
 X_data = loaded
 X_data = X_data.drop(columns='Name')
@@ -21,7 +21,7 @@ y_data = y_data.drop(y_data.iloc[:, 1:len(y_data.columns)], inplace=True, axis=1
 mlp_clf.fit(X_data, loaded)
 rad_clf.fit(X_data, loaded)
 
-alphabet = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+alphabet                   = [0,    1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25]
 alphabet_translation_layer = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 ALPHABET_SIZE = 26
 ALPHABET_REPETITIONS = 3
@@ -143,7 +143,7 @@ def export_data(grid, old_df, alphabet_current_index, alphabet_current_repetitio
         alphabet_current_repetition = 0
 
     try:
-        old_df.to_excel(r'C:\Caio\VSCode\Dataset\data_set_3.xlsx', index=False)
+        old_df.to_excel(r'data\\new_data.xlsx', index=False)
     except PermissionError:
         print('Deu Ruim')
 
