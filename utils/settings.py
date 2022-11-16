@@ -40,6 +40,12 @@ DRAW_GRID_LINES = True
 # Left click number definition for pygame
 LEFT_CLICK = 0
 
+# Alphabet translation related
+ALPHABET_SIZE = 26
+
+# Parameter to generate training data
+ALPHABET_REPETITIONS = 3
+
 
 def get_font(size):
     return pygame.font.SysFont("comicsans", size)

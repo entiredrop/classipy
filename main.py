@@ -2,10 +2,9 @@ from utils import *
 import pandas as pd
 from math import floor
 from sklearn.neural_network import MLPClassifier
-from sklearn.neural_network import MLPRegressor
-from sklearn.neighbors import KNeighborsClassifier
 
-rad_clf = KNeighborsClassifier()
+alphabet_obj = Alphabet()
+
 mlp_clf = MLPClassifier(hidden_layer_sizes=(600,400,200),
                         max_iter = 50000,activation = 'relu',
                         solver = 'adam')
@@ -15,16 +14,12 @@ loaded = pd.read_excel(r'data\\train_dataset.xlsx')
 
 X_data = loaded
 X_data = X_data.drop(columns='Name')
-y_data = loaded
-y_data = y_data.drop(y_data.iloc[:, 1:len(y_data.columns)], inplace=True, axis=1)
+loaded.drop(loaded.iloc[:, 1:len(loaded.columns)], inplace=True, axis=1)
+
+print(loaded)
 
 mlp_clf.fit(X_data, loaded)
-rad_clf.fit(X_data, loaded)
 
-alphabet                   = [0,    1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25]
-alphabet_translation_layer = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
-ALPHABET_SIZE = 26
-ALPHABET_REPETITIONS = 3
 alphabet_current_index = 0
 alphabet_current_repetition = 0
 
@@ -61,6 +56,9 @@ BUTTON_HEIGHT = 50
 
 button_y = HEIGHT - TOOLBAR_HEIGHT/2 - BUTTON_HEIGHT/2
 
+prediction_button = \
+    Button(490, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "???", BLACK)
+
 buttons = [
     Button(10, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLACK),
     Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, RED),
@@ -70,7 +68,7 @@ buttons = [
     Button(310, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
     Button(370, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Import", BLACK),
     Button(430, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Denoise", BLACK),
-    Button(490, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Expand", BLACK),
+    prediction_button,
 ]
 
 def draw(win, grid, buttons):
@@ -94,7 +92,7 @@ def get_row_col_from_pos(pos):
     
     return row, col
 
-def create_array_to_predict(grid):
+def create_array_to_predict(grid, button: Button):
     array_to_export = []
 
     for i, row in enumerate(grid):
@@ -108,22 +106,20 @@ def create_array_to_predict(grid):
 
     pred = mlp_clf.predict(df)
 
-    pred_2 = rad_clf.predict(df)
-
     for i in pred:
-        print('Neural: '+ alphabet_translation_layer[i])
+        print('Neural: '+ alphabet_obj.get_letter_for_index(i))
 
-    for i in pred_2:
-        print('Other: ' + alphabet_translation_layer[i])
+        button.text = alphabet_obj.get_letter_for_index(i)
+
 
 # Exports whatever is in the grid to excel file
-def export_data(grid, old_df, alphabet_current_index, alphabet_current_repetition, alphabet):
+def export_data(grid, old_df, alphabet_current_index, alphabet_current_repetition):
     array_to_export = []
 
     if alphabet_current_index >= ALPHABET_SIZE:
         return old_df
 
-    array_to_export.append(alphabet[alphabet_current_index])
+    array_to_export.append(alphabet_current_index)
 
     for i, row in enumerate(grid):
         for j, pixel in enumerate(row):
@@ -168,56 +164,10 @@ def import_data():
 run = True
 
 clock = pygame.time.Clock()
-grid = init_grid(ROWS, COLS, BG_COLOR)
 
 data_frame = pd.DataFrame()
 
 drawing_color = BLACK
-
-class ImageData:
-    def __init__(self):
-        self.min_y = 49
-        self.min_x = 49
-        self.max_y = 0
-        self.max_x = 0
-    
-    def setMinY(self, min_y):
-        self.min_y = min_y
-
-    def setMinX(self, min_x):
-        self.min_x = min_x
-
-    def setMaxY(self, max_y):
-        self.max_y = max_y
-        
-    def setMaxX(self, max_x):
-        self.max_x = max_x
-
-    def receiveNewXandY(self, newX, newY):
-        if newX > self.max_x:
-            self.max_x = newX
-        if newX < self.min_x:
-            self.min_x = newX
-        
-        if newY > self.max_y:
-            self.max_y = newY
-        if newY < self.min_y:
-            self.min_y = newY
-
-    def getMinX(self):
-        return self.min_x
-
-    def getMinY(self):
-        return self.min_y
-
-    def getMaxX(self):
-        return self.max_x
-
-    def getMaxY(self):
-        return self.max_y
-
-    def printMaxMin(self):
-        print('Max X: '+ str(self.max_x) + '  Min X: '+ str(self.min_x) + '  Max Y: '+ str(self.max_y) + '  Min Y: '+ str(self.min_y))
     
 
 # Function to remove lost pixels in the grid
@@ -264,10 +214,12 @@ def clear_grid(grid):
     return grid
 
 # Align letter to top left
-def align_top_left(grid, image_data: ImageData):
+def align_top_left(image_data: ImageData):
     
     top_grid = []
     left_grid = []
+
+    grid = image_data.getGrid()
 
     print(image_data.getMinY())
 
@@ -308,20 +260,23 @@ def align_top_left(grid, image_data: ImageData):
         run = True
 
     if run:
-        return left_grid, image_data
+        image_data.setGrid(left_grid)
+        return image_data
     else:
-        return grid, image_data
+        return image_data
 
-def expandMagicRows(grid, image_data: ImageData):
+def expandMagicRows(image_data: ImageData):
 
     image_data.printMaxMin()
 
     factor = ROWS / (image_data.getMaxY() - image_data.getMinY() + 1)
 
     if factor == 1:
-        return grid, image_data
+        return image_data
 
     expand_array = []
+
+    grid = image_data.getGrid()
 
     #for i in range(1, image_data.getMaxY(), 1/factor):
     #    if round(i*factor) < 49:
@@ -357,14 +312,16 @@ def expandMagicRows(grid, image_data: ImageData):
                 continue
             duplicate_top[i].append(grid[expand_array[i]][j])
 
+    image_data.setGrid(duplicate_top)
+
     image_data.setMaxY(49)
     image_data.setMinY(0)
 
     print('Fator: ' + str(factor))
 
-    return duplicate_top, image_data
+    return image_data
 
-def expandMagicCols(grid, image_data: ImageData):
+def expandMagicCols(image_data: ImageData):
 
     image_data.printMaxMin()
 
@@ -373,8 +330,10 @@ def expandMagicCols(grid, image_data: ImageData):
     expand_array = []
 
     if factor == 1:
-        return grid, image_data
-        
+        return image_data
+
+    grid = image_data.getGrid()
+
     #for i in range(1, image_data.getMaxY(), 1/factor):
     #    if round(i*factor) < 49:
     #        expand_array.append(round(i*factor))
@@ -409,14 +368,17 @@ def expandMagicCols(grid, image_data: ImageData):
                 continue
             duplicate_top[i].append(grid[i][expand_array[j]])
 
+    image_data.setGrid(duplicate_top)
+
     image_data.setMaxX(49)
     image_data.setMinX(0)
 
     print('Fator: ' + str(factor))
 
-    return duplicate_top, image_data
+    return image_data
 
 image_data = ImageData()
+image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
 
 expand_ran = False
 button_clicked = False
@@ -444,7 +406,7 @@ while run:
                 row, col = get_row_col_from_pos(pos)
 
                 # Set clicked pixel to the current drawing color
-                grid[row][col] = drawing_color
+                image_data.setPixelColor(row, col, drawing_color)
 
                 image_data.receiveNewXandY(col, row)
 
@@ -467,41 +429,41 @@ while run:
 
                     if button.text == "Clear":
                         if alphabet_current_index < ALPHABET_SIZE:
-                            print('Write the letter ' + alphabet_translation_layer[alphabet_current_index])
+                            print('Write the letter ' + alphabet_obj.get_letter_for_index(alphabet_current_index))
 
-                        grid = init_grid(ROWS, COLS, BG_COLOR)
-                        expand_ran = False
                         image_data = ImageData()
+                        image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
+                        expand_ran = False
                         predicted = False
 
                     elif button.text == "Export":
                         if not expand_ran:
                             expand_ran = True
-                            grid = clear_grid(grid)
-                            grid, image_data = align_top_left(grid, image_data)
-                            grid, image_data = expandMagicRows(grid, image_data)
-                            grid, image_data = expandMagicCols(grid, image_data)
-                            data_frame, alphabet_current_repetition, alphabet_current_index = export_data(grid, data_frame, alphabet_current_index, alphabet_current_repetition, alphabet)
+                            image_data.setGrid(clear_grid(image_data.getGrid()))
+                            image_data = align_top_left(image_data)
+                            image_data = expandMagicRows(image_data)
+                            image_data = expandMagicCols(image_data)
+                            data_frame, alphabet_current_repetition, alphabet_current_index = export_data(image_data.getGrid(), data_frame, alphabet_current_index, alphabet_current_repetition)
                         print(image_data.getMaxX(), image_data.getMaxY(), image_data.getMinX(), image_data.getMinY())
                     elif button.text == "Import":
-                        grid = init_grid(ROWS, COLS, BG_COLOR)
-                        grid = import_data()
+                        image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
+                        image_data.setGrid(import_data())
                     elif button.text == "Expand":
                         if not expand_ran:
                             expand_ran = True
-                            grid, image_data = expandMagicRows(grid, image_data)
-                            grid, image_data = expandMagicCols(grid, image_data)
+                            image_data = expandMagicRows(image_data)
+                            image_data = expandMagicCols(image_data)
                     elif button.text == "Predict":
                         if not predicted:
                             predicted = True
-                            grid, image_data = align_top_left(grid, image_data)
-                            grid, image_data = expandMagicRows(grid, image_data)
-                            grid, image_data = expandMagicCols(grid, image_data)
-                            create_array_to_predict(grid)
+                            image_data = align_top_left(image_data)
+                            image_data = expandMagicRows(image_data)
+                            image_data = expandMagicCols(image_data)
+                            create_array_to_predict(image_data.getGrid(), prediction_button)
                     elif button.text == "Denoise":
                         try:
-                            grid = clear_grid(grid)
-                            grid, image_data = align_top_left(grid, image_data)
+                            image_data.setGrid(clear_grid(image_data.getGrid()))
+                            image_data = align_top_left(image_data)
                         except IndexError:
                             pass
                     else:
@@ -510,6 +472,6 @@ while run:
                     break
 
 
-    draw(WIN, grid, buttons)
+    draw(WIN, image_data.getGrid(), buttons)
         
 pygame.quit()
