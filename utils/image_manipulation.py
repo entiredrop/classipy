@@ -179,8 +179,6 @@ class ImageManipulation:
 
         grid = image_data.getGrid()
 
-        print(image_data.getMinY())
-
         # Because both X and Y start at 0 and ends in 49, the size needs to be added 1
         y_size = image_data.getMaxY()+1
         x_size = image_data.getMaxX()+1

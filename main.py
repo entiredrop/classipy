@@ -82,12 +82,27 @@ def create_array_to_predict(grid, button: Button, mlp_clf: MLPClassifier):
 
     df = pd.DataFrame(array_to_export).T
 
-    pred = mlp_clf.predict(df)
+    # Requisite: must export data to excel file, then read the same file to predict the data
+    try:
+        df.to_excel(r'data\\to_predict_data.xlsx', index=False)
+    except PermissionError:
+        print('Cannot export data file!')
+        return
+
+    try:
+        loaded_df = pd.read_excel(r'data\\to_predict_data.xlsx')
+    except:
+        print('Error loading prediction file!')
+        return
+
+    pred = mlp_clf.predict(loaded_df)
 
     for i in pred:
-        print('Neural: '+ alphabet_obj.get_letter_for_index(i))
+        print('Prediction: '+ alphabet_obj.get_letter_for_index(i))
 
         button.text = 'Prediction: ' + alphabet_obj.get_letter_for_index(i)
+
+    return
 
 
 # Exports whatever is in the grid to excel file
@@ -182,13 +197,13 @@ def clear_grid(grid):
     return grid
 
 # Perform pre-processing
-def condition_grid_to_process(image_data: ImageData):
+def condition_grid_to_process(image_data_to_predict: ImageData):
 
-    image_data = ImageManipulation.align_top_left(image_data)
-    image_data = ImageManipulation.expandMagicRows(image_data)
-    image_data = ImageManipulation.expandMagicCols(image_data)
+    image_data_to_predict = ImageManipulation.align_top_left(image_data_to_predict)
+    image_data_to_predict = ImageManipulation.expandMagicRows(image_data_to_predict)
+    image_data_to_predict = ImageManipulation.expandMagicCols(image_data_to_predict)
 
-    return image_data
+    return image_data_to_predict
 
 
 def main():
@@ -201,25 +216,22 @@ def main():
 
     WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 
-    pygame.display.set_caption("Drawing Program")
-
-    BUTTON_HEIGHT = 50
+    pygame.display.set_caption("ClassiPy")
 
     button_y = HEIGHT - TOOLBAR_HEIGHT/2 - BUTTON_HEIGHT/2
 
     prediction_button = \
-        Button(410, button_y, BUTTON_HEIGHT*2, BUTTON_HEIGHT, WHITE, "Prediction: ", BLACK)
+        Button(430, button_y, BUTTON_WIDTH*2, BUTTON_HEIGHT, WHITE, "Prediction: ", BLACK)
 
     if True == DEBUG_ACTIVE:
         buttons = [
-            Button(10, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLACK),
-            Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, RED),
-            Button(130, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Load ML", BLACK),
-            Button(190, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Predict", BLACK),
-            Button(250, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Export", BLACK),
-            Button(310, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
-            Button(370, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Import", BLACK),
-            Button(430, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Denoise", BLACK),
+            Button(10, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, WHITE, "Train", BLACK),
+            Button(70, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, WHITE, "Exp ML", BLACK),
+            Button(130, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, WHITE, "Load ML", BLACK),
+            Button(190, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, WHITE, "Predict", BLACK),
+            Button(250, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, WHITE, "Export", BLACK),
+            Button(310, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
+            Button(370, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, WHITE, "Import", BLACK),
             prediction_button,
         ]
     else:
@@ -291,7 +303,7 @@ def main():
 
                         if "Clear" == button.text:
                             if alphabet_current_index < ALPHABET_SIZE:
-                                print('Write the letter ' + alphabet_obj.get_letter_for_index(alphabet_current_index))
+                                debug_msg('Write the letter ' + alphabet_obj.get_letter_for_index(alphabet_current_index))
 
                             image_data = ImageData()
                             image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
@@ -304,24 +316,29 @@ def main():
                                 image_data.setGrid(clear_grid(image_data.getGrid()))
                                 image_data = condition_grid_to_process(image_data)
                                 data_frame, alphabet_current_repetition, alphabet_current_index = export_data(image_data.getGrid(), data_frame, alphabet_current_index, alphabet_current_repetition)
-                            print(image_data.getMaxX(), image_data.getMaxY(), image_data.getMinX(), image_data.getMinY())
                         elif "Import" == button.text:
                             image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
                             image_data.setGrid(import_data())
-                        elif "Expand" == button.text:
+                        elif "Train" == button.text:
                             if not expand_ran:
                                 expand_ran = True
+                                pygame.display.set_caption("Training")
                                 mlp_clf = train_mlp()
+                                pygame.display.set_caption("ClassiPy")
                         elif "Predict" == button.text:
                             if not predicted:
                                 predicted = True
-                                image_data = condition_grid_to_process(image_data)
-                                create_array_to_predict(image_data.getGrid(), prediction_button, mlp_clf)
+                                if False == DEBUG_ACTIVE:
+                                    image_data_to_predict = image_data.__copy__()
+                                else:
+                                    image_data_to_predict = image_data
+                                image_data_to_predict = condition_grid_to_process(image_data_to_predict)
+                                create_array_to_predict(image_data_to_predict.getGrid(), prediction_button, mlp_clf)
 
                         elif "Load ML" == button.text:
                             filename = 'data\\ml_model.sav'
                             mlp_clf = pickle.load(open(filename, 'rb'))
-                        elif "Denoise" == button.text:
+                        elif "Exp ML" == button.text:
                             try:
                                 #image_data.setGrid(clear_grid(image_data.getGrid()))
                                 #image_data = align_top_left(image_data)

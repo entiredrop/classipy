@@ -35,7 +35,7 @@ PIXEL_SIZE = WIDTH // COLS
 # Macro for the default background color
 BG_COLOR = WHITE
 
-DRAW_GRID_LINES = True
+DRAW_GRID_LINES = False
 
 # Left click number definition for pygame
 LEFT_CLICK = 0
@@ -48,6 +48,10 @@ ALPHABET_REPETITIONS = 3
 
 # Set if debug messages are enabled
 DEBUG_ACTIVE = False
+
+BUTTON_HEIGHT = 50
+
+BUTTON_WIDTH = 50
 
 def debug_msg(item):
     if True == DEBUG_ACTIVE:

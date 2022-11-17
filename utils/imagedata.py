@@ -55,3 +55,10 @@ class ImageData:
 
     def setPixelColor(self, x, y, color):
         self.grid[x][y] = color
+
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
