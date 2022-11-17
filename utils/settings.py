@@ -46,6 +46,12 @@ ALPHABET_SIZE = 26
 # Parameter to generate training data
 ALPHABET_REPETITIONS = 3
 
+# Set if debug messages are enabled
+DEBUG_ACTIVE = False
+
+def debug_msg(item):
+    if True == DEBUG_ACTIVE:
+        print(item)
 
 def get_font(size):
     return pygame.font.SysFont("comicsans", size)

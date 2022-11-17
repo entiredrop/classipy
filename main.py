@@ -4,10 +4,6 @@ from math import floor
 from sklearn.neural_network import MLPClassifier
 import pickle
 
-alphabet_obj = Alphabet()
-
-mlp_clf = MLPClassifier()
-
 def train_mlp():
     mlp_clf = MLPClassifier(hidden_layer_sizes=(600,400,200),
                         max_iter = 50000,activation = 'relu',
@@ -24,13 +20,6 @@ def train_mlp():
     mlp_clf.fit(X_data, loaded)
 
     return mlp_clf
-
-alphabet_current_index = 0
-alphabet_current_repetition = 0
-
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-
-pygame.display.set_caption("Drawing Program")
 
 def init_grid(rows, cols, color):
     grid = []
@@ -57,24 +46,6 @@ def draw_grid(win, grid):
         for i in range(COLS + 1):
             pygame.draw.line(win, BLACK, (i * PIXEL_SIZE, 0), (i * PIXEL_SIZE, HEIGHT - TOOLBAR_HEIGHT))
 
-BUTTON_HEIGHT = 50
-
-button_y = HEIGHT - TOOLBAR_HEIGHT/2 - BUTTON_HEIGHT/2
-
-prediction_button = \
-    Button(490, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "???", BLACK)
-
-buttons = [
-    Button(10, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLACK),
-    Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, RED),
-    Button(130, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Load ML", BLACK),
-    Button(190, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Predict", BLACK),
-    Button(250, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Export", BLACK),
-    Button(310, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
-    Button(370, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Import", BLACK),
-    Button(430, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Denoise", BLACK),
-    prediction_button,
-]
 
 def draw(win, grid, buttons):
     win.fill(BG_COLOR)
@@ -100,6 +71,8 @@ def get_row_col_from_pos(pos):
 def create_array_to_predict(grid, button: Button, mlp_clf: MLPClassifier):
     array_to_export = []
 
+    alphabet_obj = Alphabet()
+
     for i, row in enumerate(grid):
         for j, pixel in enumerate(row):
             if grid[i][j] != WHITE:
@@ -114,7 +87,7 @@ def create_array_to_predict(grid, button: Button, mlp_clf: MLPClassifier):
     for i in pred:
         print('Neural: '+ alphabet_obj.get_letter_for_index(i))
 
-        button.text = alphabet_obj.get_letter_for_index(i)
+        button.text = 'Prediction: ' + alphabet_obj.get_letter_for_index(i)
 
 
 # Exports whatever is in the grid to excel file
@@ -165,16 +138,6 @@ def import_data():
     return grid_loaded
 
 
-
-run = True
-
-clock = pygame.time.Clock()
-
-data_frame = pd.DataFrame()
-
-drawing_color = BLACK
-    
-
 # Function to remove lost pixels in the grid
 def clear_grid(grid):
     found = False
@@ -218,265 +181,165 @@ def clear_grid(grid):
     
     return grid
 
-# Align letter to top left
-def align_top_left(image_data: ImageData):
-    
-    top_grid = []
-    left_grid = []
-
-    grid = image_data.getGrid()
-
-    print(image_data.getMinY())
-
-    y_size = image_data.getMaxY()+1
-    x_size = image_data.getMaxX()+1
-
-    run = False
-
-    # If image is not aligned to the top
-    if image_data.getMinY() > 0:
-        for i, row in enumerate(grid):
-            top_grid.append([])
-            for j, pixel in enumerate(row):
-                if (image_data.getMinY() + i) < y_size:
-                    top_grid[i].append(grid[image_data.getMinY()+i][j])
-                    image_data.setMaxY(i)
-                else:
-                    top_grid[i].append(WHITE)
-        image_data.setMinY(0)
-
-        run = True
-        
-
-    # If image is not aligned to the left
-    if image_data.getMinX() > 0:
-        for i, row in enumerate(grid):
-            left_grid.append([])
-            for j, pixel in enumerate(row):
-                if (image_data.getMinX() + j) < x_size:
-                    left_grid[i].append(top_grid[i][image_data.getMinX()+j])
-                    image_data.setMaxX(j)
-                    #print('Resizing X: ' + str(j))
-                    #image_data.printMaxMin()
-                else:
-                    left_grid[i].append(WHITE)
-        image_data.setMinX(0)
-
-        run = True
-
-    if run:
-        image_data.setGrid(left_grid)
-        return image_data
-    else:
-        return image_data
-
-def expandMagicRows(image_data: ImageData):
-
-    image_data.printMaxMin()
-
-    factor = ROWS / (image_data.getMaxY() - image_data.getMinY() + 1)
-
-    if factor == 1:
-        return image_data
-
-    expand_array = []
-
-    grid = image_data.getGrid()
-    
-    do_loop = True
-    step = 1/factor
-    iteration = 0;
-
-    print('step: ' + str(step))
-
-    while(do_loop):
-        expand_array.append(floor(iteration*step))
-        if (iteration >= 50):
-            do_loop = False
-
-        iteration += 1
-
-    print('Expand array len: ' + str(len(expand_array)))
-
-    print('Expand Array: ')
-    print(expand_array)
-
-    duplicate_top = []
-
-    for i, row in enumerate(grid):
-        duplicate_top.append([])
-        for j, pixel in enumerate(row):
-            if i >= len(expand_array):
-                duplicate_top[i].append(grid[i][j])
-                continue
-            duplicate_top[i].append(grid[expand_array[i]][j])
-
-    image_data.setGrid(duplicate_top)
-
-    image_data.setMaxY(49)
-    image_data.setMinY(0)
-
-    print('Fator: ' + str(factor))
-
-    return image_data
-
-def expandMagicCols(image_data: ImageData):
-
-    image_data.printMaxMin()
-
-    factor = COLS / (image_data.getMaxX() - image_data.getMinX() + 1)
-
-    expand_array = []
-
-    if factor == 1:
-        return image_data
-
-    grid = image_data.getGrid()
-
-    do_loop = True
-    step = 1/factor
-    iteration = 0;
-
-    print('step: ' + str(step))
-
-    while(do_loop):
-        expand_array.append(floor(iteration*step))
-        if (iteration >= 50):
-            do_loop = False
-
-        iteration += 1
-
-    print('Expand array len: ' + str(len(expand_array)))
-
-    print('Expand Array: ')
-    print(expand_array)
-
-    duplicate_top = []
-
-    for i, row in enumerate(grid):
-        duplicate_top.append([])
-        for j, pixel in enumerate(row):
-            if i >= len(expand_array):
-                duplicate_top[i].append(grid[i][j])
-                continue
-            duplicate_top[i].append(grid[i][expand_array[j]])
-
-    image_data.setGrid(duplicate_top)
-
-    image_data.setMaxX(49)
-    image_data.setMinX(0)
-
-    print('Fator: ' + str(factor))
-
-    return image_data
-
 # Perform pre-processing
 def condition_grid_to_process(image_data: ImageData):
 
-    image_data = align_top_left(image_data)
-    image_data = expandMagicRows(image_data)
-    image_data = expandMagicCols(image_data)
+    image_data = ImageManipulation.align_top_left(image_data)
+    image_data = ImageManipulation.expandMagicRows(image_data)
+    image_data = ImageManipulation.expandMagicCols(image_data)
 
     return image_data
 
-image_data = ImageData()
-image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
 
-expand_ran = False
-button_clicked = False
-predicted = False
-while run:
-    
-    # From pygame, limit the FPS
-    clock.tick(120)
+def main():
+    mlp_clf = MLPClassifier()
 
-    # Get events
-    for event in pygame.event.get():
+    alphabet_obj = Alphabet()
+
+    alphabet_current_index = 0
+    alphabet_current_repetition = 0
+
+    WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+
+    pygame.display.set_caption("Drawing Program")
+
+    BUTTON_HEIGHT = 50
+
+    button_y = HEIGHT - TOOLBAR_HEIGHT/2 - BUTTON_HEIGHT/2
+
+    prediction_button = \
+        Button(410, button_y, BUTTON_HEIGHT*2, BUTTON_HEIGHT, WHITE, "Prediction: ", BLACK)
+
+    if True == DEBUG_ACTIVE:
+        buttons = [
+            Button(10, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, BLACK),
+            Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, RED),
+            Button(130, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Load ML", BLACK),
+            Button(190, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Predict", BLACK),
+            Button(250, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Export", BLACK),
+            Button(310, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
+            Button(370, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Import", BLACK),
+            Button(430, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Denoise", BLACK),
+            prediction_button,
+        ]
+    else:
+        filename = 'data\\ml_model.sav'
+        mlp_clf = pickle.load(open(filename, 'rb'))
+        buttons = [
+            Button(10, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Predict", BLACK),
+            Button(70, button_y, BUTTON_HEIGHT, BUTTON_HEIGHT, WHITE, "Clear", BLACK),
+            prediction_button,
+        ]
+
+    run = True
+
+    clock = pygame.time.Clock()
+
+    data_frame = pd.DataFrame()
+
+    drawing_color = BLACK
         
-        # If user clicked the "x" in the window
-        if event.type == pygame.QUIT:
-            run = False
+    image_data = ImageData()
+    image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
 
-        # If left click pressed
-        if pygame.mouse.get_pressed()[LEFT_CLICK]:
+    expand_ran = False
+    button_clicked = False
+    predicted = False
+    while run:
+        
+        # From pygame, limit the FPS
+        clock.tick(120)
 
-            # Get the click position
-            pos = pygame.mouse.get_pos()
+        # Get events
+        for event in pygame.event.get():
+            
+            # If user clicked the "x" in the window
+            if pygame.QUIT == event.type:
+                run = False
 
-            try:
-                # Get the coordinates from click position (if coordinates out of grid, IndexError will be raised)
-                row, col = get_row_col_from_pos(pos)
+            # If left click pressed
+            if pygame.mouse.get_pressed()[LEFT_CLICK]:
 
-                # Set clicked pixel to the current drawing color
-                image_data.setPixelColor(row, col, drawing_color)
+                # Get the click position
+                pos = pygame.mouse.get_pos()
 
-                image_data.receiveNewXandY(col, row)
+                try:
+                    # Get the coordinates from click position (if coordinates out of grid, IndexError will be raised)
+                    row, col = get_row_col_from_pos(pos)
 
-            # In the case that the click happenned outside grid
-            except IndexError:
+                    # Set clicked pixel to the current drawing color
+                    image_data.setPixelColor(row, col, drawing_color)
 
-                # Look for a button press
-                for button in buttons:
+                    image_data.receiveNewXandY(col, row)
 
-                    # If button was not clicked
-                    if not button.clicked(pos):
-                        button_clicked = False
-                        # Continue loop
-                        continue
-                    
-                    if button_clicked:
-                        continue
+                # In the case that the click happenned outside grid
+                except IndexError:
 
-                    button_clicked = True
+                    # Look for a button press
+                    for button in buttons:
 
-                    if button.text == "Clear":
-                        if alphabet_current_index < ALPHABET_SIZE:
-                            print('Write the letter ' + alphabet_obj.get_letter_for_index(alphabet_current_index))
+                        # If button was not clicked
+                        if not button.clicked(pos):
+                            button_clicked = False
+                            # Continue loop
+                            continue
+                        
+                        if button_clicked:
+                            continue
 
-                        image_data = ImageData()
-                        image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
-                        expand_ran = False
-                        predicted = False
+                        button_clicked = True
 
-                    elif button.text == "Export":
-                        if not expand_ran:
-                            expand_ran = True
-                            image_data.setGrid(clear_grid(image_data.getGrid()))
-                            image_data = condition_grid_to_process(image_data)
-                            data_frame, alphabet_current_repetition, alphabet_current_index = export_data(image_data.getGrid(), data_frame, alphabet_current_index, alphabet_current_repetition)
-                        print(image_data.getMaxX(), image_data.getMaxY(), image_data.getMinX(), image_data.getMinY())
-                    elif button.text == "Import":
-                        image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
-                        image_data.setGrid(import_data())
-                    elif button.text == "Expand":
-                        if not expand_ran:
-                            expand_ran = True
-                            mlp_clf = train_mlp()
-                    elif button.text == "Predict":
-                        if not predicted:
-                            predicted = True
-                            image_data = condition_grid_to_process(image_data)
-                            create_array_to_predict(image_data.getGrid(), prediction_button, mlp_clf)
+                        if "Clear" == button.text:
+                            if alphabet_current_index < ALPHABET_SIZE:
+                                print('Write the letter ' + alphabet_obj.get_letter_for_index(alphabet_current_index))
 
-                    elif button.text == "Load ML":
-                        filename = 'data\\ml_model.sav'
-                        mlp_clf = pickle.load(open(filename, 'rb'))
-                    elif button.text == "Denoise":
-                        try:
-                            #image_data.setGrid(clear_grid(image_data.getGrid()))
-                            #image_data = align_top_left(image_data)
-                            mlp_clf = train_mlp()
+                            image_data = ImageData()
+                            image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
+                            expand_ran = False
+                            predicted = False
+
+                        elif "Export" == button.text:
+                            if not expand_ran:
+                                expand_ran = True
+                                image_data.setGrid(clear_grid(image_data.getGrid()))
+                                image_data = condition_grid_to_process(image_data)
+                                data_frame, alphabet_current_repetition, alphabet_current_index = export_data(image_data.getGrid(), data_frame, alphabet_current_index, alphabet_current_repetition)
+                            print(image_data.getMaxX(), image_data.getMaxY(), image_data.getMinX(), image_data.getMinY())
+                        elif "Import" == button.text:
+                            image_data.setGrid(init_grid(ROWS, COLS, BG_COLOR))
+                            image_data.setGrid(import_data())
+                        elif "Expand" == button.text:
+                            if not expand_ran:
+                                expand_ran = True
+                                mlp_clf = train_mlp()
+                        elif "Predict" == button.text:
+                            if not predicted:
+                                predicted = True
+                                image_data = condition_grid_to_process(image_data)
+                                create_array_to_predict(image_data.getGrid(), prediction_button, mlp_clf)
+
+                        elif "Load ML" == button.text:
                             filename = 'data\\ml_model.sav'
-                            pickle.dump(mlp_clf, open(filename, 'wb'))
-                            print('Network trained!')
-                        except IndexError:
+                            mlp_clf = pickle.load(open(filename, 'rb'))
+                        elif "Denoise" == button.text:
+                            try:
+                                #image_data.setGrid(clear_grid(image_data.getGrid()))
+                                #image_data = align_top_left(image_data)
+                                mlp_clf = train_mlp()
+                                filename = 'data\\ml_model.sav'
+                                pickle.dump(mlp_clf, open(filename, 'wb'))
+                                print('Network trained!')
+                            except IndexError:
+                                pass
+                        else:
                             pass
-                    else:
-                        drawing_color = button.color
 
-                    break
+                        break
 
 
-    draw(WIN, image_data.getGrid(), buttons)
-        
-pygame.quit()
+        draw(WIN, image_data.getGrid(), buttons)
+            
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()

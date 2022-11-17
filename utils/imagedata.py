@@ -44,7 +44,8 @@ class ImageData:
         return self.max_y
 
     def printMaxMin(self):
-        print('Max X: '+ str(self.max_x) + '  Min X: '+ str(self.min_x) + '  Max Y: '+ str(self.max_y) + '  Min Y: '+ str(self.min_y))
+        if True == DEBUG_ACTIVE:
+            print('Max X: '+ str(self.max_x) + '  Min X: '+ str(self.min_x) + '  Max Y: '+ str(self.max_y) + '  Min Y: '+ str(self.min_y))
 
     def setGrid(self,grid):
         self.grid = grid
